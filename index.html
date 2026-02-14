@@ -7,31 +7,28 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>LED Laufschrift Pro</title>
+    <title>RoadRage</title>
     
     <!-- 1. Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- 2. React & ReactDOM (Production Version für Stabilität) -->
+    <!-- 2. React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- 3. Babel (für den Code unten) -->
+    <!-- 3. Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- 4. Lucide Icons (Spezifische Version, damit es nicht abstürzt) -->
-    <script src="https://unpkg.com/lucide-react@0.292.0/dist/umd/lucide-react.min.js"></script>
-
     <style>
         body {
             background-color: #000000;
             margin: 0;
             overflow: hidden;
             overscroll-behavior: none;
-            touch-action: none; /* Verhindert Zoom/Scroll */
+            touch-action: none;
             -webkit-user-select: none;
             user-select: none;
-            font-family: sans-serif;
+            font-family: 'Arial Black', sans-serif; /* Dickerer Font für Straße */
         }
         
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
@@ -50,14 +47,33 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // Sicherstellen, dass React geladen ist
         const { useState, useEffect, useRef } = React;
-        
-        // Icons laden (Fallback falls Icon fehlt)
-        const { 
-            Mic, MicOff, Play, X, Zap, RotateCcw, PenTool, Check, Trash2, 
-            Type, Sparkles, Loader2, RotateCw, Settings, AlertCircle, Maximize 
-        } = window.lucideReact || {};
+
+        // --- INLINE ICONS (Kein Server nötig) ---
+        const IconBase = ({ children, size = 24, className = "", ...props }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+                {children}
+            </svg>
+        );
+
+        const Mic = (props) => <IconBase {...props}><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></IconBase>;
+        const MicOff = (props) => <IconBase {...props}><line x1="2" x2="22" y1="2" y2="22"/><path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2"/><path d="M5 10v2a7 7 0 0 0 12 5"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M9 9v3a3 3 0 0 0 5.12 2.63"/><line x1="12" x2="12" y1="19" y2="22"/></IconBase>;
+        const Play = (props) => <IconBase {...props}><polygon points="6 3 20 12 6 21 6 3"/></IconBase>;
+        const X = (props) => <IconBase {...props}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></IconBase>;
+        const Zap = (props) => <IconBase {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></IconBase>;
+        const RotateCcw = (props) => <IconBase {...props}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></IconBase>;
+        const PenTool = (props) => <IconBase {...props}><path d="m12 19 7-7 3 3-7 7-3-3z"/><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="m2 2 7.586 7.586"/><circle cx="11" cy="11" r="2"/></IconBase>;
+        const Check = (props) => <IconBase {...props}><path d="M20 6 9 17l-5-5"/></IconBase>;
+        const Trash2 = (props) => <IconBase {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></IconBase>;
+        const Type = (props) => <IconBase {...props}><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></IconBase>;
+        const Sparkles = (props) => <IconBase {...props}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></IconBase>;
+        const Loader2 = (props) => <IconBase {...props}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></IconBase>;
+        const RotateCw = (props) => <IconBase {...props}><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></IconBase>;
+        const Settings = (props) => <IconBase {...props}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></IconBase>;
+        const AlertCircle = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></IconBase>;
+        const Maximize2 = (props) => <IconBase {...props}><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/></IconBase>;
+        // NEU: Spiegel-Icon
+        const FlipHorizontal = (props) => <IconBase {...props}><path d="M8 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/><path d="M12 20v2"/><path d="M12 14v2"/><path d="M12 8v2"/><path d="M12 2v2"/></IconBase>;
 
         // --- KONFIGURATION ---
         const THEMES = [
@@ -69,8 +85,8 @@
         ];
 
         const DEFAULT_QUICK_TEXTS = [
-          "Vielen Dank!", "Bitte Anhalten", "Licht einschalten", "Tür schließen", 
-          "Bitte folgen", "Brauche Hilfe", "Polizei rufen", "Abstand halten"
+          "DANKE", "STOP", "LICHT AN", "TÜR ZU", 
+          "FOLGEN", "HILFE", "POLIZEI", "ABSTAND"
         ];
 
         const App = () => {
@@ -102,6 +118,9 @@
           const [speedMultiplier, setSpeedMultiplier] = useState(3.0); 
           const [animationDuration, setAnimationDuration] = useState(10);
           const [isRotated, setIsRotated] = useState(false);
+          
+          // NEU: Spiegel-Status
+          const [isMirrored, setIsMirrored] = useState(false);
 
           const recognitionRef = useRef(null);
           const wakeLockRef = useRef(null);
@@ -260,6 +279,8 @@
             setIsPlaying(false);
             releaseWakeLock();
             setIsRotated(false);
+            setIsMirrored(false); // Reset Mirror
+            
             if (document.exitFullscreen && document.fullscreenElement) {
               document.exitFullscreen().catch(err => console.log(err));
             } else if (document.webkitExitFullscreen) {
@@ -303,11 +324,11 @@
                   <div className="absolute inset-0 z-[60] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
                     <div className="bg-gray-800 border border-purple-500/50 w-full max-w-sm rounded-2xl p-6 shadow-2xl relative">
                       <button onClick={() => setShowApiKeyInput(!showApiKeyInput)} className="absolute top-4 right-4 text-gray-500 hover:text-white bg-gray-900 p-2 rounded-full">
-                         {Settings && <Settings size={18} />}
+                         <Settings size={18} />
                       </button>
                       
                       <h3 className="text-lg font-bold mb-2 flex items-center gap-2 text-purple-400">
-                        {Sparkles && <Sparkles size={20} />} KI Thema
+                        <Sparkles size={20} /> KI Thema
                       </h3>
                       
                       {showApiKeyInput ? (
@@ -337,147 +358,4 @@
                 {/* CONTROLS */}
                 <div className="flex-grow h-screen overflow-y-auto p-4 pr-16 custom-scrollbar pb-24">
                   <div className="flex justify-between items-center mb-4">
-                    <h1 className="text-xl font-bold text-yellow-500 flex items-center gap-2">
-                      {Zap && <Zap className="fill-current" />} LED Pro Max
-                    </h1>
-                  </div>
-
-                  <div className="bg-gray-800 rounded-xl p-4 shadow-lg mb-6 relative border border-gray-700">
-                    <textarea
-                      className="w-full h-32 bg-transparent text-3xl font-black text-white placeholder-gray-600 outline-none resize-none text-center leading-tight mb-2"
-                      placeholder="Text eingeben..."
-                      value={text}
-                      onChange={(e) => setText(e.target.value)}
-                    />
-                    <div className="absolute top-2 right-2 flex flex-col gap-2 z-10">
-                      {text && <button onClick={() => setText('')} className="bg-gray-700/50 p-2 rounded-lg text-gray-400 hover:text-red-400">{RotateCcw && <RotateCcw size={16} />}</button>}
-                      <button onClick={toggleCaps} className="bg-gray-700/50 p-2 rounded-lg text-gray-400 hover:text-blue-400">{Type && <Type size={16} />}</button>
-                      {text.length > 5 && <button onClick={optimizeTextWithAi} disabled={isAiLoading} className="bg-purple-900/40 border border-purple-500/30 p-2 rounded-lg text-purple-300 hover:text-white">{isAiLoading ? '...' : (Sparkles && <Sparkles size={16} />)}</button>}
-                    </div>
-                    
-                    <div className="absolute bottom-2 right-16 z-20">
-                      <button onClick={toggleRecording} className={`p-5 rounded-full shadow-lg transition-all active:scale-95 ${isRecording ? 'bg-red-600 animate-pulse ring-4 ring-red-900' : 'bg-blue-600 hover:bg-blue-500'}`}>{isRecording ? (MicOff && <MicOff size={28} />) : (Mic && <Mic size={28} />)}</button>
-                    </div>
-                  </div>
-
-                  <div className="mb-2 flex flex-wrap gap-2 items-center justify-between">
-                     <h3 className="text-xs font-bold text-gray-400 uppercase">Kacheln</h3>
-                     <div className="flex gap-2">
-                        <button onClick={() => setShowAiModal(true)} className="flex items-center gap-1 px-3 py-2 rounded-lg text-[10px] font-bold bg-purple-900/40 text-purple-300 border border-purple-500/30 hover:bg-purple-800">{Sparkles && <Sparkles size={12} />} KI THEMA</button>
-                        <button onClick={() => { setIsEditingPresets(!isEditingPresets); setEditingIndex(null); }} className={`flex items-center gap-1 px-3 py-2 rounded-lg text-[10px] font-bold transition-all ${isEditingPresets ? 'bg-yellow-500 text-black' : 'bg-gray-700 text-gray-300'}`}>{isEditingPresets ? (Check && <Check size={12} />) : (PenTool && <PenTool size={12} />)}{isEditingPresets ? 'FERTIG' : 'EDIT'}</button>
-                        {isEditingPresets && <button onClick={() => { if(confirm("Reset?")) { setPresets(DEFAULT_QUICK_TEXTS); setIsEditingPresets(false); }}} className="bg-red-900/40 text-red-400 p-2 rounded-lg">{Trash2 && <Trash2 size={14} />}</button>}
-                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 mb-8">
-                    {presets.map((preset, index) => (
-                      <button key={index} onClick={() => isEditingPresets ? (setEditingIndex(index), setTempEditText(preset)) : setText(preset)} className={`relative h-16 rounded-xl border transition-all active:scale-95 flex items-center justify-center px-2 overflow-hidden ${isEditingPresets ? 'bg-gray-800 border-yellow-500 border-dashed text-yellow-500 opacity-90' : 'bg-gray-800 border-gray-700 hover:border-blue-500 text-gray-100'}`}>
-                        {isEditingPresets && (PenTool && <PenTool size={10} className="absolute top-1 right-1 text-yellow-500 opacity-50" />)}
-                        <span className={`text-center w-full ${(!preset || preset.length <= 15) ? 'text-sm font-bold' : 'text-[10px] leading-tight font-medium'}`}>{preset || <span className="text-gray-600 italic">Leer</span>}</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="grid grid-cols-5 gap-2 pb-10">
-                    {THEMES.map((theme) => (
-                      <button key={theme.id} onClick={() => setSelectedTheme(theme)} className={`aspect-square rounded-lg border-2 flex items-center justify-center transition-all ${selectedTheme.id === theme.id ? 'border-white scale-110 shadow-lg' : 'border-transparent opacity-50'}`} style={{ backgroundColor: theme.bg, color: theme.text }}><span className="font-bold text-[10px]">Aa</span></button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* START BUTTON */}
-                <div className="fixed right-0 top-0 h-full w-12 bg-gray-900 border-l border-gray-800 z-50 flex flex-col shadow-[-10px_0_20px_rgba(0,0,0,0.5)]">
-                  <button onClick={startMarquee} disabled={!text} className={`h-full w-full flex flex-col items-center justify-center gap-4 transition-all ${!text ? 'bg-gray-800 text-gray-600 cursor-not-allowed' : 'bg-gradient-to-b from-green-500 to-green-700 hover:from-green-400 hover:to-green-600 text-white'}`}>
-                    {Play && <Play fill="currentColor" size={20} className="-rotate-90" />}
-                    <div className="flex flex-col gap-1 font-black text-xs tracking-widest py-4"><span>S</span><span>T</span><span>A</span><span>R</span><span>T</span></div>
-                    {Play && <Play fill="currentColor" size={20} className="-rotate-90" />}
-                  </button>
-                </div>
-              </div>
-            );
-          }
-
-          // --- MARQUEE VIEW ---
-          return (
-            <div 
-              ref={marqueeContainerRef}
-              className={`fixed inset-0 z-[9999] overflow-hidden flex items-center bg-black`} 
-              style={{ backgroundColor: selectedTheme.bg, height: '100vh' }}
-            >
-              
-              {/* Overlay UI */}
-              <div className="absolute inset-0 z-[2000] flex flex-col justify-between p-4 pointer-events-none">
-                <div className="flex justify-end pointer-events-auto gap-2">
-                  <button 
-                    onClick={forceFullscreen} 
-                    className="p-3 rounded-full text-white/10 hover:text-white hover:bg-white/10 transition-all"
-                    title="Vollbild"
-                  >
-                    {Maximize && <Maximize size={24} strokeWidth={2} />}
-                  </button>
-                  
-                  <button onClick={stopMarquee} className="p-3 bg-white/5 hover:bg-red-500/80 rounded-full text-white/30 hover:text-white backdrop-blur-sm transition-colors">
-                    {X && <X size={28} strokeWidth={3} />}
-                  </button>
-                </div>
-
-                <div className="flex justify-between items-end pointer-events-auto pb-4">
-                  <button onClick={() => setIsRotated(!isRotated)} className={`flex flex-col items-center justify-center w-10 h-10 rounded-lg backdrop-blur-sm transition-all active:scale-95 ${isRotated ? 'bg-white/10 text-white' : 'text-white/10 hover:text-white hover:bg-white/10'}`}>
-                     {RotateCw && <RotateCw size={16} className={isRotated ? 'rotate-90' : ''} />}
-                  </button>
-                  
-                  {/* TRANSPARENT SPEED BUTTONS */}
-                  <div className="flex gap-1 p-1">
-                    {[1, 2, 3, 4, 5].map((speed) => (
-                      <button 
-                        key={speed} 
-                        onClick={() => setSpeedMultiplier(speed)} 
-                        className={`w-8 h-8 rounded-lg font-black text-xs flex items-center justify-center transition-all ${
-                          speedMultiplier === speed 
-                            ? 'text-yellow-500 opacity-60' 
-                            : 'text-transparent hover:text-white/50' 
-                        }`}
-                      >
-                        {speed}x
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* MARQUEE TEXT */}
-              <div 
-                className={`absolute flex items-center`} 
-                style={{
-                   width: isRotated ? '100vh' : '100vw', 
-                   height: isRotated ? '100vw' : '100vh',
-                   transform: isRotated ? 'rotate(90deg)' : 'rotate(0deg)',
-                   ...(isRotated ? { width: '100vh', height: '100vw', left: 'calc(50vw - 50vh)', top: 'calc(50vh - 50vw)' } : { left: 0, top: 0 })
-                }}
-              >
-                <div 
-                  className="absolute whitespace-nowrap font-black will-change-transform"
-                  style={{ 
-                    color: selectedTheme.text,
-                    fontSize: isRotated ? '90vw' : '90vh', 
-                    lineHeight: '1',
-                    animationName: 'marquee',
-                    animationDuration: `${animationDuration}s`,
-                    animationTimingFunction: 'linear',
-                    animationIterationCount: 'infinite',
-                    left: 0 
-                  }}
-                >
-                  {text}
-                </div>
-              </div>
-            </div>
-          );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
-
+                    <h1 className="text-xl font-black itali
