@@ -1,0 +1,406 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>LED Laufschrift Pro</title>
+    
+    <!-- 1. Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. React & ReactDOM (Production Version für Stabilität) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- 3. Babel (für den Code unten) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 4. Lucide Icons (Spezifische Version, damit es nicht abstürzt) -->
+    <script src="https://unpkg.com/lucide-react@0.292.0/dist/umd/lucide-react.min.js"></script>
+
+
+    <style>
+        body {
+            background-color: #000000;
+            margin: 0;
+            overflow: hidden;
+            overscroll-behavior: none;
+            touch-action: none; /* Verhindert Zoom/Scroll */
+            -webkit-user-select: none;
+            user-select: none;
+            font-family: sans-serif;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #111827; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+        
+        @keyframes marquee {
+          0% { transform: translateX(100vw); } 
+          100% { transform: translateX(-100%); } 
+        }
+
+
+        .will-change-transform { will-change: transform; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+
+    <script type="text/babel">
+        // Sicherstellen, dass React geladen ist
+        const { useState, useEffect, useRef } = React;
+        
+        // Icons laden (Fallback falls Icon fehlt)
+        const { 
+            Mic, MicOff, Play, X, Zap, RotateCcw, PenTool, Check, Trash2, 
+            Type, Sparkles, Loader2, RotateCw, Settings, AlertCircle, Maximize 
+        } = window.lucideReact || {};
+
+
+        // --- KONFIGURATION ---
+        const THEMES = [
+          { id: 'warning', bg: '#000000', text: '#FFD700', name: 'Baustelle', label: 'Gelb/Schwarz' },
+          { id: 'emergency', bg: '#cc0000', text: '#FFFFFF', name: 'Notfall', label: 'Weiß/Rot' },
+          { id: 'police', bg: '#0000FF', text: '#FFFFFF', name: 'Polizei', label: 'Weiß/Blau' },
+          { id: 'matrix', bg: '#000000', text: '#00FF00', name: 'Matrix', label: 'Grün/Schwarz' },
+          { id: 'high-vis', bg: '#FFFFFF', text: '#000000', name: 'Klassisch', label: 'Schwarz/Weiß' },
+        ];
+
+
+        const DEFAULT_QUICK_TEXTS = [
+          "Vielen Dank!", "Bitte Anhalten", "Licht einschalten", "Tür schließen", 
+          "Bitte folgen", "Brauche Hilfe", "Polizei rufen", "Abstand halten"
+        ];
+
+
+        const App = () => {
+          // STATE
+          const [text, setText] = useState(() => localStorage.getItem('marquee_text') || '');
+          const [presets, setPresets] = useState(() => {
+            try {
+                const saved = localStorage.getItem('marquee_presets');
+                return saved ? JSON.parse(saved) : DEFAULT_QUICK_TEXTS;
+            } catch(e) { return DEFAULT_QUICK_TEXTS; }
+          });
+
+
+          const [isEditingPresets, setIsEditingPresets] = useState(false);
+          const [editingIndex, setEditingIndex] = useState(null);
+          const [tempEditText, setTempEditText] = useState('');
+          
+          // AI
+          const [isAiLoading, setIsAiLoading] = useState(false);
+          const [showAiModal, setShowAiModal] = useState(false);
+          const [aiTopic, setAiTopic] = useState('');
+          const [aiError, setAiError] = useState('');
+          const [userApiKey, setUserApiKey] = useState(() => localStorage.getItem('marquee_api_key') || '');
+          const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+
+
+          // App Logic
+          const [isRecording, setIsRecording] = useState(false);
+          const [isPlaying, setIsPlaying] = useState(false);
+          const [selectedTheme, setSelectedTheme] = useState(THEMES[0]);
+          const [speedMultiplier, setSpeedMultiplier] = useState(3.0); 
+          const [animationDuration, setAnimationDuration] = useState(10);
+          const [isRotated, setIsRotated] = useState(false);
+
+
+          const recognitionRef = useRef(null);
+          const wakeLockRef = useRef(null);
+          const editInputRef = useRef(null);
+          const aiInputRef = useRef(null);
+          const marqueeContainerRef = useRef(null);
+
+
+          // EFFECTS
+          useEffect(() => { localStorage.setItem('marquee_text', text); }, [text]);
+          useEffect(() => { localStorage.setItem('marquee_presets', JSON.stringify(presets)); }, [presets]);
+          useEffect(() => { localStorage.setItem('marquee_api_key', userApiKey); }, [userApiKey]);
+
+
+          useEffect(() => {
+            if (editingIndex !== null && editInputRef.current) editInputRef.current.focus();
+          }, [editingIndex]);
+
+
+          useEffect(() => {
+            if (showAiModal && aiInputRef.current) aiInputRef.current.focus();
+          }, [showAiModal]);
+
+
+          useEffect(() => {
+            if (isPlaying) calculateDuration();
+          }, [speedMultiplier, text, isRotated, isPlaying]);
+
+
+          // Speech Init
+          useEffect(() => {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+              const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+              recognitionRef.current = new SpeechRecognition();
+              recognitionRef.current.continuous = false;
+              recognitionRef.current.interimResults = true;
+              recognitionRef.current.lang = 'de-DE';
+
+
+              recognitionRef.current.onresult = (event) => {
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                  if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+                  else setText(event.results[i][0].transcript);
+                }
+                if (finalTranscript) setText(finalTranscript);
+              };
+              recognitionRef.current.onend = () => setIsRecording(false);
+              recognitionRef.current.onerror = (e) => setIsRecording(false);
+            }
+          }, []);
+
+
+          // AI Logic
+          const callGemini = async (prompt, systemInstruction = "") => {
+            setAiError('');
+            if (!userApiKey) { setAiError("KEY FEHLT"); return null; }
+            setIsAiLoading(true);
+            try {
+              const response = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${userApiKey}`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    systemInstruction: { parts: [{ text: systemInstruction }] }
+                  })
+                }
+              );
+              if (!response.ok) throw new Error("Key ungültig?");
+              const data = await response.json();
+              setIsAiLoading(false);
+              const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (!resultText) throw new Error("Keine Antwort.");
+              return resultText;
+            } catch (error) { 
+              setIsAiLoading(false); 
+              setAiError(error.message); 
+              return null; 
+            }
+          };
+
+
+          const optimizeTextWithAi = async () => {
+            if (!text.trim()) return;
+            const result = await callGemini(`Kürze für Laufschrift (Max 8 Wörter): "${text}"`, "Nur Text.");
+            if (result) setText(result.trim());
+          };
+
+
+          const generatePresetsWithAi = async () => {
+            if (!aiTopic.trim()) return;
+            const result = await callGemini(`8 LED-Texte (Kurz, max 6 Wörter) für Thema: "${aiTopic}". JSON Array.`, "JSON only.");
+            if (result) {
+              try {
+                const cleaned = result.replace(/```json/g, '').replace(/```/g, '').trim();
+                const newPresets = JSON.parse(cleaned);
+                if (Array.isArray(newPresets)) {
+                  setPresets(newPresets.slice(0, 8));
+                  setShowAiModal(false);
+                  setAiTopic('');
+                  setIsEditingPresets(false);
+                }
+              } catch (e) { setAiError("Datenfehler."); }
+            }
+          };
+
+
+          // Helper Logic
+          const requestWakeLock = async () => {
+            if ('wakeLock' in navigator) {
+              try { wakeLockRef.current = await navigator.wakeLock.request('screen'); } catch (err) {}
+            }
+          };
+
+
+          const releaseWakeLock = async () => {
+            if (wakeLockRef.current) {
+                try { await wakeLockRef.current.release(); wakeLockRef.current = null; } catch(e) {}
+            }
+          };
+
+
+          const toggleRecording = () => {
+            if (isRecording) {
+              recognitionRef.current.stop();
+            } else {
+              setText('');
+              recognitionRef.current.start();
+              setIsRecording(true);
+            }
+          };
+
+
+          const toggleCaps = () => {
+            if (text === text.toUpperCase()) setText(text.toLowerCase().replace(/(^|\s)\S/g, l => l.toUpperCase()));
+            else setText(text.toUpperCase());
+          };
+
+
+          const calculateDuration = () => {
+              const screenWidth = window.innerWidth;
+              const approxCharWidth = window.innerHeight * 0.6; 
+              const textWidth = text.length * approxCharWidth;
+              const totalDistance = screenWidth + textWidth;
+              const baseSpeed = 400; 
+              const currentSpeed = baseSpeed * speedMultiplier;
+              const duration = totalDistance / currentSpeed;
+              setAnimationDuration(Math.max(duration, 0.5));
+          };
+
+
+          const forceFullscreen = () => {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen({ navigationUI: "hide" }).catch(e => console.log(e));
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            }
+          };
+
+
+          const startMarquee = () => {
+            if (!text.trim()) return;
+            forceFullscreen();
+            requestWakeLock();
+            setIsPlaying(true);
+          };
+
+
+          const stopMarquee = () => {
+            setIsPlaying(false);
+            releaseWakeLock();
+            setIsRotated(false);
+            if (document.exitFullscreen && document.fullscreenElement) {
+              document.exitFullscreen().catch(err => console.log(err));
+            } else if (document.webkitExitFullscreen) {
+              document.webkitExitFullscreen();
+            }
+          };
+
+
+          // --- RENDER ---
+          if (!isPlaying) {
+            return (
+              <div className="min-h-screen bg-gray-900 text-white flex font-sans overflow-hidden relative">
+                
+                {/* MODAL: PRESET EDIT */}
+                {editingIndex !== null && (
+                  <div className="absolute inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
+                    <div className="bg-gray-800 border border-gray-600 w-full max-w-sm rounded-2xl p-6 shadow-2xl">
+                      <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-yellow-500">
+                         Bearbeiten
+                      </h3>
+                      <textarea
+                        ref={editInputRef}
+                        value={tempEditText}
+                        onChange={(e) => setTempEditText(e.target.value)}
+                        className="w-full bg-gray-900 border border-gray-700 rounded-lg p-4 text-xl text-white mb-6 focus:border-yellow-500 focus:outline-none h-32 resize-none"
+                      />
+                      <div className="flex gap-3">
+                        <button onClick={() => setEditingIndex(null)} className="flex-1 py-3 rounded-xl bg-gray-700 font-bold">Abbrechen</button>
+                        <button onClick={() => {
+                           const newPresets = [...presets];
+                           newPresets[editingIndex] = tempEditText;
+                           setPresets(newPresets);
+                           setEditingIndex(null);
+                        }} className="flex-1 py-3 rounded-xl bg-yellow-500 text-black font-bold">Speichern</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+
+                {/* MODAL: AI */}
+                {showAiModal && (
+                  <div className="absolute inset-0 z-[60] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
+                    <div className="bg-gray-800 border border-purple-500/50 w-full max-w-sm rounded-2xl p-6 shadow-2xl relative">
+                      <button onClick={() => setShowApiKeyInput(!showApiKeyInput)} className="absolute top-4 right-4 text-gray-500 hover:text-white bg-gray-900 p-2 rounded-full">
+                         {Settings && <Settings size={18} />}
+                      </button>
+                      
+                      <h3 className="text-lg font-bold mb-2 flex items-center gap-2 text-purple-400">
+                        {Sparkles && <Sparkles size={20} />} KI Thema
+                      </h3>
+                      
+                      {showApiKeyInput ? (
+                        <div className="mb-4 bg-gray-900 p-3 rounded-lg border border-gray-700 animate-in fade-in">
+                          <label className="text-xs text-gray-400 mb-1 block">Dein Google Gemini API Key</label>
+                          <input type="password" value={userApiKey} onChange={(e) => setUserApiKey(e.target.value)} placeholder="Key hier einfügen..." className="w-full bg-black border border-gray-600 rounded px-2 py-2 text-sm font-mono text-white" />
+                          <p className="text-[10px] text-gray-500 mt-2">Kostenlos erstellen unter aistudio.google.com</p>
+                        </div>
+                      ) : (
+                        <input ref={aiInputRef} type="text" value={aiTopic} onChange={(e) => setAiTopic(e.target.value)} placeholder="z.B. Stadion, Panne..." className="w-full bg-gray-900 border border-gray-700 rounded-lg p-4 text-lg text-white mb-4 focus:border-purple-500 focus:outline-none" onKeyDown={(e) => e.key === 'Enter' && generatePresetsWithAi()} />
+                      )}
+                      
+                      {aiError && (
+                        <div className="bg-red-900/30 border border-red-500/30 p-3 rounded-lg mb-4 text-red-200 text-xs flex items-start gap-2">
+                           API Fehler: {aiError}
+                        </div>
+                      )}
+                      
+                      <div className="flex gap-3">
+                        <button onClick={() => setShowAiModal(false)} className="flex-1 py-3 rounded-xl bg-gray-700 font-bold">Zurück</button>
+                        {!showApiKeyInput && <button onClick={generatePresetsWithAi} disabled={!aiTopic.trim() || isAiLoading} className="flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50">{isAiLoading ? 'Lädt...' : 'Start'}</button>}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+
+                {/* CONTROLS */}
+                <div className="flex-grow h-screen overflow-y-auto p-4 pr-16 custom-scrollbar pb-24">
+                  <div className="flex justify-between items-center mb-4">
+                    <h1 className="text-xl font-bold text-yellow-500 flex items-center gap-2">
+                      {Zap && <Zap className="fill-current" />} LED Pro Max
+                    </h1>
+                  </div>
+
+
+                  <div className="bg-gray-800 rounded-xl p-4 shadow-lg mb-6 relative border border-gray-700">
+                    <textarea
+                      className="w-full h-32 bg-transparent text-3xl font-black text-white placeholder-gray-600 outline-none resize-none text-center leading-tight mb-2"
+                      placeholder="Text eingeben..."
+                      value={text}
+                      onChange={(e) => setText(e.target.value)}
+                    />
+                    <div className="absolute top-2 right-2 flex flex-col gap-2 z-10">
+                      {text && <button onClick={() => setText('')} className="bg-gray-700/50 p-2 rounded-lg text-gray-400 hover:text-red-400">{RotateCcw && <RotateCcw size={16} />}</button>}
+                      <button onClick={toggleCaps} className="bg-gray-700/50 p-2 rounded-lg text-gray-400 hover:text-blue-400">{Type && <Type size={16} />}</button>
+                      {text.length > 5 && <button onClick={optimizeTextWithAi} disabled={isAiLoading} className="bg-purple-900/40 border border-purple-500/30 p-2 rounded-lg text-purple-300 hover:text-white">{isAiLoading ? '...' : (Sparkles && <Sparkles size={16} />)}</button>}
+                    </div>
+                    
+                    <div className="absolute bottom-2 right-16 z-20">
+                      <button onClick={toggleRecording} className={`p-5 rounded-full shadow-lg transition-all active:scale-95 ${isRecording ? 'bg-red-600 animate-pulse ring-4 ring-red-900' : 'bg-blue-600 hover:bg-blue-500'}`}>{isRecording ? (MicOff && <MicOff size={28} />) : (Mic && <Mic size={28} />)}</button>
+                    </div>
+                  </div>
+
+
+                  <div className="mb-2 flex flex-wrap gap-2 items-center justify-between">
+                     <h3 className="text-xs font-bold text-gray-400 uppercase">Kacheln</h3>
+                     <div className="flex gap-2">
+                        <button onClick={() => setShowAiModal(true)} className="flex items-center gap-1 px-3 py-2 rounded-lg text-[10px] font-bold bg-purple-900/40 text-purple-300 border border-purple-500/30 hover:bg-purple-800">{Sparkles && <Sparkles size={12} />} KI THEMA</button>
+                        <button onClick={() => { setIsEditingPresets(!isEditingPresets); setEditingIndex(null); }} className={`flex items-center gap-1 px-3 py-2 rounded-lg text-[10px] font-bold transition-all ${isEditingPresets ? 'bg-yellow-500 text-black' : 'bg-gray-700 text-gray-300'}`}>{isEditingPresets ? (Check && <Check size={12} />) : (PenTool && <PenTool size={12} />)}{isEditingPresets ? 'FERTIG' : 'EDIT'}</button>
+                        {isEditingPresets && <button onClick={() => { if(confirm("Reset?")) { setPresets(DEFAULT_QUICK_TEXTS); setIsEditingPresets(false); }}} className="bg-red-900/40 text-red-400 p-2 rounded-lg">{Trash2 && <Trash2 size={14} />}</button>}
+                     </div>
+                  </div>
+
+
+                  <div className="grid grid-cols-2 gap-3 mb-8">
+                    {presets.map((preset, index) => (
+                      <button key={index} onClick={() => isEditingPresets ? (setEditingIndex(index), setTempEditText(preset)) : setText(preset)} className={`relative h-16 rounded-xl border transition-all active:scale-95 flex items-center justify-center px-2 overflow-hidden ${isEditingPresets ? 'bg-gray-800 border-yellow-500 border-dashed text-yellow-500 opa
