@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
@@ -22,7 +22,6 @@
     <!-- 4. Lucide Icons (Spezifische Version, damit es nicht abstürzt) -->
     <script src="https://unpkg.com/lucide-react@0.292.0/dist/umd/lucide-react.min.js"></script>
 
-
     <style>
         body {
             background-color: #000000;
@@ -44,13 +43,11 @@
           100% { transform: translateX(-100%); } 
         }
 
-
         .will-change-transform { will-change: transform; }
     </style>
 </head>
 <body>
     <div id="root"></div>
-
 
     <script type="text/babel">
         // Sicherstellen, dass React geladen ist
@@ -62,7 +59,6 @@
             Type, Sparkles, Loader2, RotateCw, Settings, AlertCircle, Maximize 
         } = window.lucideReact || {};
 
-
         // --- KONFIGURATION ---
         const THEMES = [
           { id: 'warning', bg: '#000000', text: '#FFD700', name: 'Baustelle', label: 'Gelb/Schwarz' },
@@ -72,12 +68,10 @@
           { id: 'high-vis', bg: '#FFFFFF', text: '#000000', name: 'Klassisch', label: 'Schwarz/Weiß' },
         ];
 
-
         const DEFAULT_QUICK_TEXTS = [
           "Vielen Dank!", "Bitte Anhalten", "Licht einschalten", "Tür schließen", 
           "Bitte folgen", "Brauche Hilfe", "Polizei rufen", "Abstand halten"
         ];
-
 
         const App = () => {
           // STATE
@@ -88,7 +82,6 @@
                 return saved ? JSON.parse(saved) : DEFAULT_QUICK_TEXTS;
             } catch(e) { return DEFAULT_QUICK_TEXTS; }
           });
-
 
           const [isEditingPresets, setIsEditingPresets] = useState(false);
           const [editingIndex, setEditingIndex] = useState(null);
@@ -102,7 +95,6 @@
           const [userApiKey, setUserApiKey] = useState(() => localStorage.getItem('marquee_api_key') || '');
           const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
-
           // App Logic
           const [isRecording, setIsRecording] = useState(false);
           const [isPlaying, setIsPlaying] = useState(false);
@@ -111,34 +103,28 @@
           const [animationDuration, setAnimationDuration] = useState(10);
           const [isRotated, setIsRotated] = useState(false);
 
-
           const recognitionRef = useRef(null);
           const wakeLockRef = useRef(null);
           const editInputRef = useRef(null);
           const aiInputRef = useRef(null);
           const marqueeContainerRef = useRef(null);
 
-
           // EFFECTS
           useEffect(() => { localStorage.setItem('marquee_text', text); }, [text]);
           useEffect(() => { localStorage.setItem('marquee_presets', JSON.stringify(presets)); }, [presets]);
           useEffect(() => { localStorage.setItem('marquee_api_key', userApiKey); }, [userApiKey]);
 
-
           useEffect(() => {
             if (editingIndex !== null && editInputRef.current) editInputRef.current.focus();
           }, [editingIndex]);
-
 
           useEffect(() => {
             if (showAiModal && aiInputRef.current) aiInputRef.current.focus();
           }, [showAiModal]);
 
-
           useEffect(() => {
             if (isPlaying) calculateDuration();
           }, [speedMultiplier, text, isRotated, isPlaying]);
-
 
           // Speech Init
           useEffect(() => {
@@ -148,7 +134,6 @@
               recognitionRef.current.continuous = false;
               recognitionRef.current.interimResults = true;
               recognitionRef.current.lang = 'de-DE';
-
 
               recognitionRef.current.onresult = (event) => {
                 let finalTranscript = '';
@@ -162,7 +147,6 @@
               recognitionRef.current.onerror = (e) => setIsRecording(false);
             }
           }, []);
-
 
           // AI Logic
           const callGemini = async (prompt, systemInstruction = "") => {
@@ -194,13 +178,11 @@
             }
           };
 
-
           const optimizeTextWithAi = async () => {
             if (!text.trim()) return;
             const result = await callGemini(`Kürze für Laufschrift (Max 8 Wörter): "${text}"`, "Nur Text.");
             if (result) setText(result.trim());
           };
-
 
           const generatePresetsWithAi = async () => {
             if (!aiTopic.trim()) return;
@@ -219,7 +201,6 @@
             }
           };
 
-
           // Helper Logic
           const requestWakeLock = async () => {
             if ('wakeLock' in navigator) {
@@ -227,13 +208,11 @@
             }
           };
 
-
           const releaseWakeLock = async () => {
             if (wakeLockRef.current) {
                 try { await wakeLockRef.current.release(); wakeLockRef.current = null; } catch(e) {}
             }
           };
-
 
           const toggleRecording = () => {
             if (isRecording) {
@@ -245,12 +224,10 @@
             }
           };
 
-
           const toggleCaps = () => {
             if (text === text.toUpperCase()) setText(text.toLowerCase().replace(/(^|\s)\S/g, l => l.toUpperCase()));
             else setText(text.toUpperCase());
           };
-
 
           const calculateDuration = () => {
               const screenWidth = window.innerWidth;
@@ -263,7 +240,6 @@
               setAnimationDuration(Math.max(duration, 0.5));
           };
 
-
           const forceFullscreen = () => {
             const elem = document.documentElement;
             if (elem.requestFullscreen) {
@@ -273,14 +249,12 @@
             }
           };
 
-
           const startMarquee = () => {
             if (!text.trim()) return;
             forceFullscreen();
             requestWakeLock();
             setIsPlaying(true);
           };
-
 
           const stopMarquee = () => {
             setIsPlaying(false);
@@ -292,7 +266,6 @@
               document.webkitExitFullscreen();
             }
           };
-
 
           // --- RENDER ---
           if (!isPlaying) {
@@ -324,7 +297,6 @@
                     </div>
                   </div>
                 )}
-
 
                 {/* MODAL: AI */}
                 {showAiModal && (
@@ -362,7 +334,6 @@
                   </div>
                 )}
 
-
                 {/* CONTROLS */}
                 <div className="flex-grow h-screen overflow-y-auto p-4 pr-16 custom-scrollbar pb-24">
                   <div className="flex justify-between items-center mb-4">
@@ -370,7 +341,6 @@
                       {Zap && <Zap className="fill-current" />} LED Pro Max
                     </h1>
                   </div>
-
 
                   <div className="bg-gray-800 rounded-xl p-4 shadow-lg mb-6 relative border border-gray-700">
                     <textarea
@@ -390,7 +360,6 @@
                     </div>
                   </div>
 
-
                   <div className="mb-2 flex flex-wrap gap-2 items-center justify-between">
                      <h3 className="text-xs font-bold text-gray-400 uppercase">Kacheln</h3>
                      <div className="flex gap-2">
@@ -400,7 +369,115 @@
                      </div>
                   </div>
 
-
                   <div className="grid grid-cols-2 gap-3 mb-8">
                     {presets.map((preset, index) => (
-                      <button key={index} onClick={() => isEditingPresets ? (setEditingIndex(index), setTempEditText(preset)) : setText(preset)} className={`relative h-16 rounded-xl border transition-all active:scale-95 flex items-center justify-center px-2 overflow-hidden ${isEditingPresets ? 'bg-gray-800 border-yellow-500 border-dashed text-yellow-500 opa
+                      <button key={index} onClick={() => isEditingPresets ? (setEditingIndex(index), setTempEditText(preset)) : setText(preset)} className={`relative h-16 rounded-xl border transition-all active:scale-95 flex items-center justify-center px-2 overflow-hidden ${isEditingPresets ? 'bg-gray-800 border-yellow-500 border-dashed text-yellow-500 opacity-90' : 'bg-gray-800 border-gray-700 hover:border-blue-500 text-gray-100'}`}>
+                        {isEditingPresets && (PenTool && <PenTool size={10} className="absolute top-1 right-1 text-yellow-500 opacity-50" />)}
+                        <span className={`text-center w-full ${(!preset || preset.length <= 15) ? 'text-sm font-bold' : 'text-[10px] leading-tight font-medium'}`}>{preset || <span className="text-gray-600 italic">Leer</span>}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-5 gap-2 pb-10">
+                    {THEMES.map((theme) => (
+                      <button key={theme.id} onClick={() => setSelectedTheme(theme)} className={`aspect-square rounded-lg border-2 flex items-center justify-center transition-all ${selectedTheme.id === theme.id ? 'border-white scale-110 shadow-lg' : 'border-transparent opacity-50'}`} style={{ backgroundColor: theme.bg, color: theme.text }}><span className="font-bold text-[10px]">Aa</span></button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* START BUTTON */}
+                <div className="fixed right-0 top-0 h-full w-12 bg-gray-900 border-l border-gray-800 z-50 flex flex-col shadow-[-10px_0_20px_rgba(0,0,0,0.5)]">
+                  <button onClick={startMarquee} disabled={!text} className={`h-full w-full flex flex-col items-center justify-center gap-4 transition-all ${!text ? 'bg-gray-800 text-gray-600 cursor-not-allowed' : 'bg-gradient-to-b from-green-500 to-green-700 hover:from-green-400 hover:to-green-600 text-white'}`}>
+                    {Play && <Play fill="currentColor" size={20} className="-rotate-90" />}
+                    <div className="flex flex-col gap-1 font-black text-xs tracking-widest py-4"><span>S</span><span>T</span><span>A</span><span>R</span><span>T</span></div>
+                    {Play && <Play fill="currentColor" size={20} className="-rotate-90" />}
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          // --- MARQUEE VIEW ---
+          return (
+            <div 
+              ref={marqueeContainerRef}
+              className={`fixed inset-0 z-[9999] overflow-hidden flex items-center bg-black`} 
+              style={{ backgroundColor: selectedTheme.bg, height: '100vh' }}
+            >
+              
+              {/* Overlay UI */}
+              <div className="absolute inset-0 z-[2000] flex flex-col justify-between p-4 pointer-events-none">
+                <div className="flex justify-end pointer-events-auto gap-2">
+                  <button 
+                    onClick={forceFullscreen} 
+                    className="p-3 rounded-full text-white/10 hover:text-white hover:bg-white/10 transition-all"
+                    title="Vollbild"
+                  >
+                    {Maximize && <Maximize size={24} strokeWidth={2} />}
+                  </button>
+                  
+                  <button onClick={stopMarquee} className="p-3 bg-white/5 hover:bg-red-500/80 rounded-full text-white/30 hover:text-white backdrop-blur-sm transition-colors">
+                    {X && <X size={28} strokeWidth={3} />}
+                  </button>
+                </div>
+
+                <div className="flex justify-between items-end pointer-events-auto pb-4">
+                  <button onClick={() => setIsRotated(!isRotated)} className={`flex flex-col items-center justify-center w-10 h-10 rounded-lg backdrop-blur-sm transition-all active:scale-95 ${isRotated ? 'bg-white/10 text-white' : 'text-white/10 hover:text-white hover:bg-white/10'}`}>
+                     {RotateCw && <RotateCw size={16} className={isRotated ? 'rotate-90' : ''} />}
+                  </button>
+                  
+                  {/* TRANSPARENT SPEED BUTTONS */}
+                  <div className="flex gap-1 p-1">
+                    {[1, 2, 3, 4, 5].map((speed) => (
+                      <button 
+                        key={speed} 
+                        onClick={() => setSpeedMultiplier(speed)} 
+                        className={`w-8 h-8 rounded-lg font-black text-xs flex items-center justify-center transition-all ${
+                          speedMultiplier === speed 
+                            ? 'text-yellow-500 opacity-60' 
+                            : 'text-transparent hover:text-white/50' 
+                        }`}
+                      >
+                        {speed}x
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* MARQUEE TEXT */}
+              <div 
+                className={`absolute flex items-center`} 
+                style={{
+                   width: isRotated ? '100vh' : '100vw', 
+                   height: isRotated ? '100vw' : '100vh',
+                   transform: isRotated ? 'rotate(90deg)' : 'rotate(0deg)',
+                   ...(isRotated ? { width: '100vh', height: '100vw', left: 'calc(50vw - 50vh)', top: 'calc(50vh - 50vw)' } : { left: 0, top: 0 })
+                }}
+              >
+                <div 
+                  className="absolute whitespace-nowrap font-black will-change-transform"
+                  style={{ 
+                    color: selectedTheme.text,
+                    fontSize: isRotated ? '90vw' : '90vh', 
+                    lineHeight: '1',
+                    animationName: 'marquee',
+                    animationDuration: `${animationDuration}s`,
+                    animationTimingFunction: 'linear',
+                    animationIterationCount: 'infinite',
+                    left: 0 
+                  }}
+                >
+                  {text}
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+
